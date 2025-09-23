@@ -12,7 +12,7 @@
 
 效果展示：
 
-![alt text](image\image-1.png)
+![alt text](image/image-1.png)
 
 ## cplusoj 未通过题目展示器 插件
 
@@ -20,4 +20,4 @@
 
 效果展示：
 
-![alt text](image\image-2.png)
+![alt text](image/image-2.png)
