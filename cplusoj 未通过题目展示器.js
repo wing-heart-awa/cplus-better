@@ -4,9 +4,9 @@
 // @version      1.0
 // @description  在比赛界面展示最近已尝试，未通过的 5 道题目
 // @author       wing_heart(:
-// @match        http://cplusoj.com/d/senior/record?*uidOrName=*
-// @match        http://cplusoj.com/d/senior/contest?page=*
-// @match        http://cplusoj.com/d/senior/contest
+// @match        http://cplusoj.com/d/*/record?*uidOrName=*
+// @match        http://cplusoj.com/d/*/contest?page=*
+// @match        http://cplusoj.com/d/*/contest
 // @grant        GM_setValue
 // @grant        GM_getValue
 // ==/UserScript==

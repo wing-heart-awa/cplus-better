@@ -4,7 +4,7 @@
 // @version      0.4
 // @description  对已参加的比赛，以 zroj 风格展示补题情况，绿色代表通过，灰色代表未通过。
 // @author       wing_heart(:
-// @match        http://cplusoj.com/d/senior/contest*
+// @match        http://cplusoj.com/d/*/contest*
 // @grant        GM_xmlhttpRequest
 // @connect      cplusoj.com
 // ==/UserScript==
