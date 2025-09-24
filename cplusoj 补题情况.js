@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         cplusoj 补题情况
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      1.0
 // @description  对已参加的比赛，以 zroj 风格展示补题情况，绿色代表通过，灰色代表未通过。
 // @author       wing_heart(:
-// @match        http://cplusoj.com/d/*/contest*
+// @match        http://cplusoj.com/*contest*
 // @grant        GM_xmlhttpRequest
 // @connect      cplusoj.com
 // ==/UserScript==
@@ -33,6 +33,10 @@
         console.log(`找到 ${contestItems.length} 个比赛项目`);
 
         contestItems.forEach(item => {
+            // 只处理已参加的比赛
+            const attended = item.querySelector('ul.supplementary.list .contest__info-attended');
+            if (!attended) return;
+
             const titleLink = item.querySelector('h1.contest__title a');
             if (!titleLink) return;
 
@@ -121,55 +125,123 @@
         });
     }
 
-    // 解析补题情况HTML
+    // 解析补题情况HTML（只爬取题目区块，参考test.html结构）
     function parseSupplementStatusHTML(html) {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
-
-        const statusCells = tempDiv.querySelectorAll('td.col--status.record-status--border.col--correction');
+        // 精确定位第一个题目区块
+        const h1 = tempDiv.querySelector('.medium-9.columns > div:nth-child(1) > div.section__header > h1');
+        if (!h1 || h1.textContent.trim() !== '题目') {
+            console.warn('[补题情况] 未找到第一个题目区块的h1');
+            return [];
+        }
+        // 获取题目区块div.section
+        const problemSection = h1.closest('div.section');
+        if (!problemSection) {
+            console.warn('[补题情况] 未找到题目区块的section');
+            return [];
+        }
+        // 直接在题目区块下查找所有tr（不依赖tbody）
+        const rows = problemSection.querySelectorAll('tr');
+        console.log('[补题情况] 题目区块tr数量:', rows.length);
         const statusData = [];
-
-        statusCells.forEach(cell => {
-            const isPassed = cell.classList.contains('pass');
-            const scoreElem = cell.querySelector('.record-status--text span');
-            const score = scoreElem ? scoreElem.textContent.trim() : '0';
-            const statusText = cell.querySelector('.record-status--text').textContent.trim().replace(score, '').trim();
-
+        rows.forEach((row, i) => {
+            // 题目名和链接
+            const problemCell = row.querySelector('td.col--problem.col--problem-name');
+            const problemLink = problemCell ? problemCell.querySelector('a') : null;
+            if (!problemLink) return;
+            const problemName = problemLink.textContent.trim();
+            const problemUrl = problemLink.href;
+            // 补题状态
+            const correctionCell = row.querySelector('td.col--status.record-status--border.col--correction');
+            const isPassed = correctionCell && correctionCell.classList.contains('pass');
+            const correctionStatus = correctionCell ? correctionCell.textContent.trim() : '';
+            // 赛时提交状态（分数和状态）
+            const statusCell = row.querySelector('td.col--status.record-status--border');
+            let score = '';
+            let statusText = '';
+            if (statusCell) {
+                const scoreSpan = statusCell.querySelector('span[style*="color"]');
+                score = scoreSpan ? scoreSpan.textContent.trim() : '';
+                const statusA = statusCell.querySelector('a.record-status--text');
+                statusText = statusA ? statusA.textContent.trim() : statusCell.textContent.trim();
+            }
+            // 状态优先级：补题 > 赛时 > 未提交
+            let showStatus = '未提交';
+            if (correctionStatus) {
+                showStatus = correctionStatus;
+            } else if (statusText) {
+                showStatus = statusText;
+            }
             statusData.push({
                 passed: isPassed,
-                score: score,
-                status: statusText
+                name: problemName,
+                url: problemUrl,
+                status: showStatus,
+                score: score
             });
         });
-
         return statusData;
     }
 
-    // 显示补题情况（点式）
+    // 显示补题情况（点式，优化悬浮卡片UI）
     function displaySupplementStatusAsDots(titleElement, statusData) {
         // 检查是否已添加过圆点，避免重复添加
         if (titleElement.nextSibling && titleElement.nextSibling.style.display === 'inline-flex') {
             return;
         }
-
         const dotsContainer = document.createElement('span');
-        dotsContainer.style.marginLeft = '8px';
+        dotsContainer.style.marginLeft = '10px';
         dotsContainer.style.display = 'inline-flex';
-        dotsContainer.style.gap = '4px';
-        dotsContainer.title = '补题情况：绿色表示已完成，深灰色表示未完成';
+        dotsContainer.style.gap = '12px'; // 间距更大
+        dotsContainer.style.verticalAlign = 'middle';
+        dotsContainer.style.position = 'relative';
+        dotsContainer.style.top = '-2px';
+
+        // 只创建一个全局悬浮卡片，所有圆点共用
+        let hoverCard = document.getElementById('cplusoj-hover-card');
+        if (!hoverCard) {
+            hoverCard = document.createElement('div');
+            hoverCard.id = 'cplusoj-hover-card';
+            hoverCard.style.position = 'fixed';
+            hoverCard.style.zIndex = '9999';
+            hoverCard.style.background = '#fff';
+            hoverCard.style.border = '1px solid #e0e0e0';
+            hoverCard.style.borderRadius = '8px';
+            hoverCard.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+            hoverCard.style.padding = '8px 16px';
+            hoverCard.style.fontSize = '14px';
+            hoverCard.style.color = '#333';
+            hoverCard.style.pointerEvents = 'none';
+            hoverCard.style.display = 'none';
+            document.body.appendChild(hoverCard);
+        }
 
         statusData.forEach((item, index) => {
             const dot = document.createElement('span');
             dot.style.display = 'inline-block';
-            dot.style.width = '8px';
-            dot.style.height = '8px';
+            dot.style.width = '12px'; // 更大
+            dot.style.height = '12px';
             dot.style.borderRadius = '50%';
-            dot.style.backgroundColor = item.passed ? '#25ad40' : '#888888';
-            dot.title = `题目 ${index + 1}: ${item.score} ${item.status}`;
-
+            dot.style.backgroundColor = item.passed ? '#25ad40' : '#9b9b9bff';
+            dot.style.cursor = 'pointer';
+            dot.addEventListener('mouseenter', (e) => {
+                hoverCard.innerHTML = `<b style='font-size:15px;'>${item.name}</b><br><span style='color:${item.passed ? '#25ad40' : '#9b9b9b'};'>${item.status}${item.score ? '（得分：'+item.score+'）' : ''}</span>`;
+                hoverCard.style.display = 'block';
+            });
+            dot.addEventListener('mousemove', (e) => {
+                // 跟随鼠标实时定位
+                hoverCard.style.left = e.clientX + 18 + 'px';
+                hoverCard.style.top = e.clientY - 8 + 'px';
+            });
+            dot.addEventListener('mouseleave', () => {
+                hoverCard.style.display = 'none';
+            });
+            dot.addEventListener('click', () => {
+                if (item.url) window.open(item.url, '_blank');
+            });
             dotsContainer.appendChild(dot);
         });
-
         titleElement.parentNode.insertBefore(dotsContainer, titleElement.nextSibling);
     }
 
