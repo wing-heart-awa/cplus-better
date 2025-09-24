@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         cplusoj 补题情况
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  对已参加的比赛，以 zroj 风格展示补题情况，绿色代表通过，灰色代表未通过。
 // @author       wing_heart(:
 // @match        http://cplusoj.com/*contest*
@@ -29,7 +29,11 @@
 
     // 处理所有比赛项目
     function processContestItems() {
-        const contestItems = document.querySelectorAll('li.section__list__item.contest__item.contest-type--oi');
+        // 匹配比赛列表中的OI和IOI类型比赛元素
+        const contestItems = document.querySelectorAll(
+            'li.section__list__item.contest__item.contest-type--oi, ' +
+            'li.section__list__item.contest__item.contest-type--ioi'
+        );
         console.log(`找到 ${contestItems.length} 个比赛项目`);
 
         contestItems.forEach(item => {
